@@ -4,8 +4,10 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Web;
+using System.Linq;
+using System.Reflection;
 
-namespace BasicServerHTTPlistener
+namespace BasicWebServer
 {
     internal class Program
     {
@@ -107,9 +109,24 @@ namespace BasicServerHTTPlistener
 
                 // Obtain a response object.
                 HttpListenerResponse response = context.Response;
+                string responseString = "<HTML><BODY> This should not appear!</BODY></HTML>";
+                string path = request.Url.LocalPath;
+                string methodCalled = path.Substring(path.LastIndexOf("/")+1);
+                Type type = typeof(MyMethods);
+                MethodInfo method = type.GetMethods().FirstOrDefault(m =>
+                    m.Name.Equals(methodCalled, StringComparison.InvariantCultureIgnoreCase));
+                MyMethods c = new MyMethods();
+                try
+                {
+                    responseString = (string)method.Invoke(c, new object[] { request.QueryString });
+                }
+                catch (NullReferenceException)
+                {
+                    responseString = $"La methode {methodCalled} n'existe pas";
+                    response.StatusCode = (int)HttpStatusCode.NotFound;
+                }
 
                 // Construct a response.
-                string responseString = "<HTML><BODY> Hello world!</BODY></HTML>";
                 byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
                 // Get a response stream and write the response to it.
                 response.ContentLength64 = buffer.Length;
